@@ -1,0 +1,95 @@
+-Hiểu được thế nào là 1 IDE và vai trò của compiler trong ide
+-Các quy định trong compiler
+-ccimp là một compiler following đặc tả ngôn ngữ C
+1
+-because it doesn't become 64bit integer type operation instruction. -> acceptable
+.......................................
+1.Constraints of ccimp following language specification
+	+global varriable : static storage classify.
+	+Không thay đổi chiều dài mảng 
+	+Not allow bit field in struct, union
+		E.g : struct{
+			type [name_bit-fields]:width;
+			};
+			-width : số bit sử dụng
+		E.g : int age -> 0-2^32-1
+		      int age:3 ->0-2^3-1
+
+	+kieu con tro ko tro den ham
+	+con tro khong dc tro den ham ( address consant not apply for function )
+	+bien toan cuc khong lon hon 4 byte		+Using ellipsis (…) for data and functions declarations are not allowed. 
+	+Rouding : only the round-to-nearest (to the nearest even) or round-to-zero mode can be selected. 
+	+ko sử dụng kiểu long long ( 64bit ) sử dụng làm điều kiện cho các statement ( if, for,while,switch..)
+
+.................
+
+
+2. runtime enviroment ( môi trường thực thi )
++cấu trúc kiểu dữ liệu : The internal representation of the pointer types is a 32-bit unsigned integer.
+			The internal representation of the enumerated types is the same as that of int.
++section : chức năng của các vùng : viết code , lưu trữ dữ liệu.... 
++Function call interface : Thanh ghi xử lí - thanh ghi general-purpose : caller-save and callee-save ( giá trị được bảo đảm trc và sau khi gọi hàm )
+				-pass parameter : R16-R25. Nếu ko có thanh ghi nào trống, sẽ truyền qua vùng stack
+				-chức năng các thanh ghi R0-R47
+			  quy tắc sử dụng thanh ghi : ( phân đối đối vào thanh ghi )
+					- chuyển đối số qua thanh ghi : 4 byte pass 1 thanh ghi, 8 byte pass 1 pair thanh ghi
+					-kiêu pass than ghi, ko có thanh ghi thì vùng stack ( struck,union luôn tới vùng stack )
+					Eg.cách 1 đối số (argument ) pass qua thanh ghi :
+						eg.void(int a, int b) -> a pass r1, b - r2 ( 4byte 1 thanh ghi)
+						   void( struc a, int b ) -> a pass stack, b - (left-side in stack) due to a ( left-side-arguemnt ) pass in stack
+						   void(int8x8 a, int 8x8 b) -> a pass r1-r2.
+					 NOTE : đối số sẽ pass tới stack nếu hết thanh ghi
+					-sử dụng return : -cho cả scalar-type and 4-byte vector type gọi thông qua thanh ghi R16 ( 4byte) , 
+							- 8 byte vector type R16-R17 (8byte)
+							 R4 cho struc, pointer
+							
+					-getX,getY in R0,R1
+					-Stack-> R2 as stack pointer( lưu giữ địa chỉ mà con trỏ đang trỏ đến hiện tại )--->cấu trúc của vùng stack là first in last out
+3.Extended language specification :
+	-vetor : sắp xếp LSB->MSB ( địa chỉ thấp -> địa chỉ cao ) 
+		EG. 0x00------0x07 ( ADDRESS)
+		R10 0X07.........LSB
+		R16 MSB........0X00 ( MỖI THANH GHI 4BYTE)
+		
+		-chỉ số của vector tương .s7---.s0 : .s0 là phần tử đầu tiên
+		-contraint của vector : 
+		-Không trả về được địa chỉ của vector.
+	-#pragma :+) inline , noinline ( như function call) : [(]<function name>[,…][)]    Eg. #pragma inline func_add
+												int func_add(int a, int b)
+		note : must be written before the function itself is defined
+		+) inline_asm : #pragma inline_asm [(]<function-name>[(clobbers={<register-name-list>|none})][,...][)]
+		   Được viết bằng code assemly
+			Eg.#pragma inline_asm f2(clobbers=none)
+			  #pragma inline_asm f3(clobbers=r16,r17,r18,r19)    = (r16-r19)
+											whether the register is a general-purpose register or SOU
+		
+		+) stacksize : sử dụng để khai báo kích thuóc stack, chỉ định byte. nếu ko set thì stack area = 128 bytes.
+			Eg. stack = 256 BYTE(bôi số của 8 )    #pragma stacksize 0x100
+		+) entry : #pragma entry <function name> <master|slave>
+		+) section : #pragma section bss <section>
+		+) unroll : #pragma unroll [(]<value>[)]
+				<value>: 0 ~ 32
+		   chỉ định số lần lặp cho câu lệnh ngay bên dưới
+		+) #pragma gwm_write_only : #pragma gwm_write_only [(] <function name> [, ...] [)]
+				: chỉ cho phép ghi tới hàm
+			Eg.#pragma gwm_write_only func_w,func1,func2
+
+	-Built-in fuctions : Những hàm được ccimp complier hỗ trợ
+			
+.................................................................................
+2.Functional Specification :			
+	+The ccimp command controls the phases from the compiler to the assembler or linker.
+	+ccimp command : Used to control the compiler, assembler, and linker. ( bao gồm tất cả quá trình )
+		từng quá trình có 1 file riêng
+2.Outline of Processing :
+.............................
+Hỏi : inline, noinline
+Hỏi : caller, callee
+................
+1.quá trình Assembling đầu vào phải FILE đầu vào : .s  file khác có được không (.o,.x) ?
+2.Thử linking  cac file khac, library file ?
+3.static library ( file .h có build được không ) ?
+4.không phải file cuối cùng thì driver vẫn run được : ccimp -cpu=v3u a.o
+5.gọi từ option khác từ ccimp được ko ?
+6.generate ra file .a .o được ra được file khác không ? ---> được
+7.Co va khi #pragma unroll
