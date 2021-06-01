@@ -1,0 +1,155 @@
+-A Shader is a user-defined program designed to run on some stage of a graphics processor
+-Shader compiler compiles the shader program
+3 loại shader :
+	VTX Shader
+	PX Shader	
+	Unified Shader: IMP-X5-H3, IMP-X5-V3M, IMP-X5-V3M2, IMP-X5-V3H and IMP-X6-V3U   (device : V3M,V3M2,V3H,V3U)
+	==> tùy vào option -c để sử dụng cho shader nào
+	
+..................................................
+•	Notes on notation
+Symbols used in the description in the specifications have the meanings below. 
+< >	Indicates that the item enclosed in it is to be specified. 
+[ ]	Indicates an optional item. 
+...	Indicates that the item immediately preceding it is to be specified one or more times. 
+△	Indicates one or more spaces (and tabs). 
+|	Indicates that a choice can be made from the items delimited by it.
+...................................................△△△△△△△△△△△△△△△△△△△△△△△△
+1.COMMAND :asms(shader assembler)
+	sasm [options] △<filename>
+	sasm [option] assembly-source-filename
+		Eg. ccimp -h
+2.INPUT Specification : 
+	2 type file : assmbler source file (.s) and .db2 output by compiler
+			-->.dbs : ELF foramt ( xuất ra symbol information and debug information, cái mà asmely file ko có )
+3.OUTPUT Specification (.o) :
+	2 format : IMP, ELF  o file input ( mã nhị phân 011 và các kí tự BEL,NULL...) ==> NẾU không đúng format thì không build được
+	2 type of object file ELF : absolute files and relocatable files ( abs, rel )
+..............................................................
+4.Assembly language specification :  (PHÂN BIỆT SYMBOL vs label )
+4.1	Program elements :
+-Label : +standard labels : giữa các section
+	 +local labels :+ 1 section
+			+ specified with digit (0 to 9).
+			+ multiple labels same name
+			+ hướng tham chiếu f(forward) or b(backward)
+	ví dụ với nhãn là 1
+	Eg: 1: #1 source
+		calla pcr0,1b ( nhãn 1 hướng lên )
+	    1: #1 source
+	Label	Operation	Operand			Comment
+	LABEL:	MOV		R1,R2		# Comment
+
+-Operation : ( instruction, assembler control instruction, or extended instruction )
+-comment : #
+-Keywords : not case-sensitive
+	note : MOV and move is keywords. Mov is symbol. --> một chuỗi có cả viết upper-case, lower-case is not keywords.
+
+-Symsbol :
+	The assembler is case-sensitive to symbols.
+	Eg.
+	   CALL R16, SUB1
+	   ......
+	   SUB1:
+	+)naming a symbol : character, _, .
+		-local(destonation) : a single digit
+		-local(reference) : a digit(0 to 9) for the first character. (b,f for second )		
+	The assembler is case-sensitive to symbols.
+	No Limit character.
+	Names that cannot be used as symbols ( keywords, instruction )
+
+-Constant :
+	The size of constants placed in the uniform section differs between Shaders as follows.
+	+)Integer constant :
+		Decimal , hexadecimal(0x)
+		Eg.  		.DATA -1234
+				.DATA 0xABCD = .DATA 0x0000ABCD
+	+)Floating-point constant :
+		value range : 1.40129846e-45 to 3.40282347e+38
+	+)LABEL constant :
+		If a label is specified as a constant, the address value is set as the constant. 
+	 	dấu " : " thì ko cần đặt immediately sau nhãn.
+-Expression and Operators :
+	+) 64-bit signed type
+	+)các toán hạng, thứ tự uu tiên của toán hạng
+	+)thực các số với nhau, số với nhãn...
+.................................................................................
+4.	INSTRUCTION:
+.F or .I at the end of an instruction : extended instruction.
+kí tự : $ ( uniform reference instruction )  	
+
+-Register pairs : instruction  First, second, Third.
+	#phần tử first sẽ được chỉ định là Register pairs và phải là số chẳn 
+		Eg. MACS R16,R18,R19 ---> Register pairs is R16,R17
+
+-Conditional instruction execution :
+	+)for all instruction, nó được kiểm soát excecute/non-excecute by register SR
+	+)Write "SR" at the end of operand if True is excecute, false is non-execute
+	Eg. 	CMP.EQ  R16, R17
+		ADD  R20, R21, R22, SR		# When R16 == R17, execute ADD.
+		SUB  R20, R21, R22, !SR		# When R16 != R17, execute SUB.
+-
+
+				..........................
+
+	..............................LINKER.............................
+Format object file : ELF format có 2 kiểu file absolute (abs) and file relocatable (rel ). 
+...	The same format will continue.
+[ ]	The item in square brackets can be omitted.
+{ }	One of the items in curly brackets should be selected.
+<Item>	The item in angle brackets is replaced with a specific string (not enclosed in double quotation marks (" ")) corresponding to that item.1
+△	One or more spaces or tabs
+" "	Characters enclosed in double quotation marks (" ")
+CR	Carriage return
+LF	Line feed
+HT	Horizontal tab
+....
+===> linking ELF object format files. ( use linking : input ( relocatable files in the ELF format and library files ) and output : output them
+.................................COMMAND LINE.......
+slink [△input-file-name or option]...
+			option : staring "-"
+			when more library option is specified, all are effective.
+input file : relocatable file in ELF foramt.
+output file format : "first-input-file-name.default-extension" 
+.........type and function option........
+Case-sensitive
+<size> and <address> format : [+] [0 [{ x | X }]] digits
+..............................
+.a : 	1.file thư viện
+	-l△filename
+	linker : sau khi linkage file input được chỉ định, option sẽ các library file của các kí hiệu không được khai báo.
+	E.g : slink main.o -l lwm.a -l gwm.a -o result01.out
+...........................
+	2.output file name  :
+	-o△filename
+		-O ABS : xuất ra  .out ( file load lên module )
+		-O LIB : xuất ta : .a ( file thư viện )
+	3.output file format :
+		-O△{format}
+		format : ABS|LID
+	4.create library file from object file : A new library file is output from linked object files.
+		-c create <filename>
+	slink -O LIB -c create sinf.o cosf.o  --->  sinf.a will be created.
+	slink -O LIB -o lib.a -c  create sinf.o cosf.o ----> lib.a will be created.
+	5. add object file to existing library file : A new library file is created from adding object file to existing library file.
+	-c add <filename>
+	slink -O LIB -c add sinf.o -o lib.a ( có sãn file sinf.o and lib.a )
+	slink -O LIB -c add tanf.o -c add cosf.o -o lib.a
+	.....
+	6.Delete : delete module frome existing library file
+		-c delete <modulename>
+	slink -O LIB -c delete sinf -o lib.a --> "delete module sinf"
+	7.Extract : A new object file is created from extracting module from existing library file.
+		-c extract <modulename>
+		slink -O LIB -c extract sinf -o lib.a    --> tạo ra file sinf.o
+	8.Replace : A new library file is created from replacing module to existing library file.
+		-c replace <modulename>
+		slink -O LIB -c replace sinf.o -o lib.a
+		giải thích : module sinf trong file lib.a sẽ được thấy thế bằng sinf.o 
+		(cả 2 file đều chưa module sinf..)
+.............Linker ---> phân bổ các phần tới bộ nhớ 
+1.section có cùng tên
+2.section có cùng kiểu bộ nhớ
+........................................................................
+1.có 1 lệnh trung gian giữa driver(ccimp) và các toolchain(sasm,slink)
+1.extended instruction refer IMM (.I) , uniform (.u )
